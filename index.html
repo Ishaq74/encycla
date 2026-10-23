@@ -3,13 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Encarta MindMaze 95</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Encycla MindMaze</title>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=MS+Reference+Sans+Serif&display=swap');
-      
       body {
-        font-family: 'MS Reference Sans Serif', 'Arial', sans-serif;
+        font-family: 'Inter', 'Arial', sans-serif;
         background-color: #000000;
         overflow: hidden;
         text-rendering: optimizeLegibility;
@@ -17,7 +14,7 @@
         -moz-osx-font-smoothing: grayscale;
       }
       
-      .font-serif-encarta {
+      .font-serif-encycla {
         font-family: 'Merriweather', 'Times New Roman', serif;
       }
 
@@ -48,18 +45,9 @@
         40%, 60% { transform: translate3d(4px, 0, 0); }
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
-  }
-}
-</script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

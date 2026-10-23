@@ -5,7 +5,7 @@ import { fetchFullQuestion } from '../services/geminiService';
 import { ArticleViewer } from './ArticleViewer';
 import { LOADING_MESSAGES, CATEGORIES, QUESTIONS_PER_LEVEL, TOTAL_LEVELS_CLASSIC, MAX_LIVES } from '../constants';
 
-interface MindMazeGameProps {
+interface EncyclaGameProps {
   mode: GameMode;
   initialDifficulty: Difficulty;
   initialCategory: Category | null;
@@ -18,7 +18,7 @@ interface ContestAnswer {
     responseTime: number;
 }
 
-export const MindMazeGame: React.FC<MindMazeGameProps> = ({ mode, initialDifficulty, initialCategory, onExit }) => {
+export const EncyclaGame: React.FC<EncyclaGameProps> = ({ mode, initialDifficulty, initialCategory, onExit }) => {
   const [status, setStatus] = useState<GameState>(GameState.LOADING);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionData | null>(null);
   
@@ -53,7 +53,7 @@ export const MindMazeGame: React.FC<MindMazeGameProps> = ({ mode, initialDifficu
      let diff = Difficulty.NOVICE;
      if (stats.level >= 4 || contestRounds > 4) diff = Difficulty.ADVENTURER;
      if (stats.level >= 8 || contestRounds > 8) diff = Difficulty.WIZARD;
-     const randomCat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
+     const randomCat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)] ?? Category.FAUNA;
      return { difficulty: diff, category: randomCat };
   }, [mode, initialDifficulty, initialCategory, stats.level, contestRounds]);
 
@@ -74,7 +74,7 @@ export const MindMazeGame: React.FC<MindMazeGameProps> = ({ mode, initialDifficu
 
     try {
       const config = getLevelConfig();
-      const data = await fetchFullQuestion(config.category, config.difficulty);
+      const data = await fetchFullQuestion(config.category ?? Category.FAUNA, config.difficulty);
       setCurrentQuestion(data);
       
       if (!isLobby) {
@@ -178,9 +178,9 @@ export const MindMazeGame: React.FC<MindMazeGameProps> = ({ mode, initialDifficu
                   '3': 2, '"': 2,
                   '4': 3, "'": 3, '(': 4
               };
-              if (p1Map.hasOwnProperty(e.key) || p1Map.hasOwnProperty(k)) {
-                  const idx = p1Map[e.key] !== undefined ? p1Map[e.key] : p1Map[k];
-                  if (idx >= 0 && idx <= 3) {
+              if (Object.hasOwn(p1Map, e.key) || Object.hasOwn(p1Map, k)) {
+                  const idx = p1Map[e.key] ?? p1Map[k];
+                  if (idx !== undefined && idx >= 0 && idx <= 3) {
                     setP1Answer({ choiceIndex: idx, timestamp: timer, responseTime });
                   }
               }
@@ -193,9 +193,9 @@ export const MindMazeGame: React.FC<MindMazeGameProps> = ({ mode, initialDifficu
                 '9': 2, 'ç': 2,
                 '0': 3, 'à': 3, '@': 3
             };
-            if (p2Map.hasOwnProperty(e.key) || p2Map.hasOwnProperty(k)) {
-                const idx = p2Map[e.key] !== undefined ? p2Map[e.key] : p2Map[k];
-                if (idx >= 0 && idx <= 3) {
+            if (Object.hasOwn(p2Map, e.key) || Object.hasOwn(p2Map, k)) {
+                const idx = p2Map[e.key] ?? p2Map[k];
+                if (idx !== undefined && idx >= 0 && idx <= 3) {
                     setP2Answer({ choiceIndex: idx, timestamp: timer, responseTime });
                 }
             }
@@ -415,7 +415,7 @@ export const MindMazeGame: React.FC<MindMazeGameProps> = ({ mode, initialDifficu
               <div className="relative z-10">
                 <div className="w-24 h-1.5 bg-gradient-to-r from-green-400 to-emerald-600 mb-8 rounded-full mx-auto shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
                 <h1 className="text-5xl md:text-6xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-green-300 via-white to-emerald-400 drop-shadow-sm">Level {stats.level} Complete</h1>
-                <p className="text-2xl mb-12 text-emerald-100/60 font-serif-encarta italic">Knowledge index updated.</p>
+                <p className="text-2xl mb-12 text-emerald-100/60 font-serif-encycla italic">Knowledge index updated.</p>
                 <button 
                     onClick={handleNextLevel} 
                     className="group relative px-12 py-4 bg-emerald-600 text-white rounded-full text-xl font-bold shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:scale-105 transition-all hover:bg-emerald-500"
@@ -487,7 +487,7 @@ export const MindMazeGame: React.FC<MindMazeGameProps> = ({ mode, initialDifficu
            <div className="relative z-10">
                <div className="text-7xl mb-6 animate-bounce">🏆</div>
                <h1 className="text-6xl md:text-8xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 tracking-tight drop-shadow-lg">Victory!</h1>
-               <p className="text-2xl mb-12 text-yellow-100/60 font-serif-encarta italic max-w-2xl mx-auto">You have successfully navigated the labyrinth of knowledge.</p>
+               <p className="text-2xl mb-12 text-yellow-100/60 font-serif-encycla italic max-w-2xl mx-auto">You have successfully navigated the labyrinth of knowledge.</p>
                <div className="bg-slate-900/50 px-12 py-8 rounded-3xl border border-yellow-500/30 mb-12 backdrop-blur-sm shadow-2xl">
                  <p className="text-sm text-yellow-500/80 uppercase tracking-[0.3em] mb-2 font-bold">Total Score</p>
                  <p className="text-6xl font-bold font-mono text-yellow-50">{stats.score}</p>
@@ -669,7 +669,7 @@ export const MindMazeGame: React.FC<MindMazeGameProps> = ({ mode, initialDifficu
                                     {mode === GameMode.CONTEST ? `ROUND ${contestRounds + 1} OF ${TOTAL_CONTEST_ROUNDS}` : `QUESTION ${stats.questionsAnswered + 1} / ${QUESTIONS_PER_LEVEL}`}
                                 </h3>
                             </div>
-                            <h2 className="text-lg md:text-3xl font-serif-encarta font-medium text-slate-100 leading-snug drop-shadow-md">
+                            <h2 className="text-lg md:text-3xl font-serif-encycla font-medium text-slate-100 leading-snug drop-shadow-md">
                                 {currentQuestion.questionText}
                             </h2>
                         </div>

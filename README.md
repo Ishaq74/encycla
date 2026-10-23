@@ -1,204 +1,300 @@
-Encycla — Architecture Decision Records (ADR)Version : 1.0
+# Encycla
 
-Date : 2026-10-22
+**The visual encyclopedia game.** Identify the subject, answer before the timer, and read the story behind the image.
 
-Statut : Validé pour implémentation
+Encycla est un quiz visuel multijoueur en temps réel : solo, rooms privées, matchmaking public et live TikTok. La spécification est gelée et l'implémentation a démarré ; le dépôt contient encore le prototype client v1, qui ne doit pas être considéré comme l'implémentation cible.
 
-Nom du produit : Encycla
+- **Produit** : Encycla
+- **Jeu** : Encycla MindMaze
+- **Langue de l'UI** : anglais
+- **Langue de la documentation** : français
+- **Statut** : documentation d'architecture gelée, implémentation en cours (phase 0 terminée, socle phase 1 en place, données phase 2 extraites)
+- **Gel de la documentation** : 2026-10-23
+- **Version documentaire** : 2.0
+- **Date** : 2026-10-22
 
-Objectif : Document unique et exhaustif. Le développeur n’a aucune décision d’architecture à prendre. Il exécute.1. Principes généraux
-Le serveur est la seule source de vérité.
-Le client React n’émet que des intentions (Join, Answer, Leave, Start, etc.). Il ne calcule jamais le score, le chrono, les vies ou le gagnant.
-Toute transition illégale est droppée silencieusement (log côté serveur uniquement).
-Aucune logique de jeu dans les composants React.
-Types partagés entre client et serveur via un seul fichier types.ts.
-Zéro secret côté client.
-ADR-001 — Serveur autoritaireDécision : Toute la logique de jeu vit dans server/game-engine.ts.Fichiers à créer :
-server/types-server.ts
-server/game-engine.ts
-Contenu exact de types-server.ts :TypeScriptimport { GameState, GameMode, Difficulty, Category, QuestionData } from '../types';
+## Sommaire
 
-export interface PlayerConnection {
-  socketId: string;
-  playerId: string;
-  roomCode: string;
-  isHost: boolean;
-  pseudo: string;
-  lives: number;
-  score: number;
-  isReady: boolean;
-}
+- [Pourquoi ce projet](#pourquoi-ce-projet)
+- [Modes de jeu](#modes-de-jeu)
+- [Architecture en un coup d'œil](#architecture-en-un-coup-dœil)
+- [Documentation](#documentation)
+- [État du dépôt](#état-du-dépôt)
+- [Démarrage cible](#démarrage-cible)
+- [Structure cible](#structure-cible)
+- [Configuration](#configuration)
+- [Qualité et sécurité](#qualité-et-sécurité)
+- [Déploiement](#déploiement)
+- [Contenu](#contenu)
+- [Non-objectifs v1](#non-objectifs-v1)
+- [Feuille de route](#feuille-de-route)
+- [Contribuer](#contribuer)
+- [Licence et crédits](#licence-et-crédits)
 
-export interface Room {
-  code: string;
-  mode: GameMode;
-  isPublic: boolean;
-  hostId: string;
-  players: PlayerConnection[];
-  gameState: GameState;
-  createdAt: number;
-  currentQuestion?: QuestionData;
-  questionStartedAt?: number;
-  questionsAnsweredThisLevel: number;
-  level: number;
-  usedQuestionIds: string[];
-}
+## Pourquoi ce projet
 
-export type GameEvent =
-  | { type: 'JOIN'; playerId: string; pseudo: string }
-  | { type: 'LEAVE'; playerId: string }
-  | { type: 'START' }
-  | { type: 'ANSWER'; playerId: string; choiceIndex: number }
-  | { type: 'TIMEOUT' }
-  | { type: 'ROUND_END' }
-  | { type: 'ACCEPT_SMALL_ROOM'; playerId: string; accepted: boolean };Comportement de GameEngine.handleEvent :
-Vérifie que la transition est légale depuis l’état courant.
-Si illégale → console.log + return null.
-Si légale → applique les changements et retourne le nouvel état de la Room.
-Le timer est géré exclusivement par le serveur (setInterval 200 ms).
-À l’entrée en état Playing : stocke Date.now() dans questionStartedAt.
-Broadcast timeRemaining à tous les clients de la room.
-À 0 ms : le moteur émet lui-même l’événement TIMEOUT.
-Scoring Encarta (constants existants) :
-MAX_LIVES = 3
-Mauvaise réponse → -1 vie.
-0 vie → joueur éliminé pour la partie.
-QUESTIONS_PER_LEVEL = 20 bonnes réponses → niveau suivant.
-TOTAL_LEVELS_CLASSIC = 10.
-ADR-002 — Transport temps réelDécision : Socket.io uniquement.Fichier : server/server.tsComportement :
-Express sur port 3000.
-Socket.io attaché au serveur HTTP.
-À la connexion : le client envoie { type: 'JOIN', playerId, pseudo }.
-Le serveur associe socketId ↔ playerId.
-Reconnexion : le client renvoie son playerId. Le serveur retrouve le joueur par playerId (pas par socketId) et renvoie l’état complet de la room.
-Déconnexion : timer de 30 secondes. Si pas de reconnexion → événement LEAVE automatique.
-Nettoyage : toutes les 60 secondes, suppression des rooms vides depuis plus de 10 minutes.
-CORS ouvert en développement, restreint au domaine de production en prod.
-ADR-003 — Matchmaking (privé + public)Fichier : server/matchmaking.tsSalon privé :
-Route POST /rooms
-Body : { hostPseudo: string, mode: GameMode }
-Génère un code de 6 caractères alphanumériques majuscules.
-Crée la Room avec isPublic: false.
-Retourne { code: string }.
-Salon public :
-Route POST /queue
-Body : { playerId: string, pseudo: string, mode: GameMode }
-Ajoute le joueur dans une file d’attente en mémoire.
-Seuil de lancement : 4 joueurs.
-Dès que 4 joueurs sont dans la file → création automatique d’une Room publique + notification match-found.
-Timer de 2 minutes :
-Si < 4 joueurs après 2 minutes → broadcast small-room-proposal avec le nombre actuel.
-Chaque joueur répond avec { type: 'ACCEPT_SMALL_ROOM', accepted: boolean }.
-Majorité accepte → lancement avec le nombre réel de joueurs.
-Sinon → reset du timer.
+Le prototype initial concentre toutes les règles dans un composant React : score, vies, timer, progression, gagnant. Cette architecture ne peut pas garantir l'équité, la reconnexion, l'anti-triche ou le multi-joueurs.
 
-ADR-004 — Client React purDécision : Aucune logique de jeu dans React.Modifications :
-MindMazeGame.tsx devient un composant purement présentationnel.
-Props : engineState + onAction(event: GameEvent).
-Suppression de tous les useState de jeu existants (timer, scores, lobby, etc.).
-Création de client/store.ts avec Zustand qui stocke uniquement l’état poussé par le serveur.
-Adaptateurs de contrôle (émettent tous le même événement ANSWER) :
-client/adapters/keyboard.ts : mapping AZERTY existant (joueur 1 et joueur 2).
-client/adapters/touch.ts : 4 gros boutons A/B/C/D (visible < 768px).
-server/tiktok-adapter.ts : voir ADR-007.
-Overlay TikTok :
-Query param ?mode=overlay → masque menu et contrôles, affiche uniquement le jeu en plein écran.
-ADR-005 — Questions (Static + Gemini)Fichier : server/question-provider.tsInterface :TypeScriptinterface QuestionProvider {
-  getQuestion(category: Category, difficulty: Difficulty): Promise<QuestionData | null>;
-}Implémentations :
-StaticProvider : lit data/questions.json. Tirage sans remise par session (usedQuestionIds dans la Room).
-DynamicProvider : appelle Gemini uniquement si le pool statique de la catégorie est épuisé. La question générée est insérée dans la table questions_pending et n’entre jamais directement dans le jeu sans validation manuelle.
-Corrections obligatoires :
-Aligner Category de types.ts (17 valeurs) avec le contenu réel de data/questions.json.
-Extraire TRIVIA_DATABASE de geminiService.ts vers data/questions.json.
-Supprimer la duplication de l’interface QuestionData.
-Switch : variable d’environnement QUESTION_SOURCE=static|dynamic|hybrid.ADR-006 — PersistanceTechnologie : better-sqlite3
+Encycla v2 applique quatre principes :
 
-Fichier : data/encycla.dbSchéma (compatible Postgres) :SQLCREATE TABLE players (
-  id TEXT PRIMARY KEY,
-  pseudo TEXT NOT NULL,
-  avatar TEXT,
-  created_at INTEGER NOT NULL
-);
+1. **Le serveur est la seule source de vérité.** Le client émet des intentions et affiche des snapshots.
+2. **Toute partie est une room.** Le solo est une room à un joueur ; le duel CONTEST est une room à deux.
+3. **Chaque règle est déterministe et testable.** Le moteur est un réducteur pur, avec horloge, aléatoire et banque de questions injectés.
+4. **Aucun secret ni réponse dans le client.** La bonne réponse n'est diffusée qu'à la phase `REVEAL`.
 
-CREATE TABLE matches (
-  id TEXT PRIMARY KEY,
-  room_code TEXT NOT NULL,
-  mode TEXT NOT NULL,
-  started_at INTEGER NOT NULL,
-  ended_at INTEGER
-);
+## Modes de jeu
 
-CREATE TABLE scores (
-  id TEXT PRIMARY KEY,
-  player_id TEXT NOT NULL,
-  match_id TEXT NOT NULL,
-  points INTEGER NOT NULL,
-  rank INTEGER,
-  FOREIGN KEY(player_id) REFERENCES players(id),
-  FOREIGN KEY(match_id) REFERENCES matches(id)
-);
+| | CLASSIC | SUBJECT | CONTEST |
+| --- | --- | --- | --- |
+| Niveaux | 10 | 1 | 1 |
+| Questions | 20 par niveau | 20 | 10 |
+| Joueurs | 1-8 web, 0 au départ puis jusqu'à 100 TikTok | 1-8 web, 0 au départ puis jusqu'à 100 TikTok | exactement 2 |
+| Catégories | toutes | une catégorie fixe | toutes |
+| Vies | 3 | 3 | aucune |
+| Difficulté | progressive | choisie | Adventurer |
+| Article | après chaque question | après chaque question | après chaque question |
 
-CREATE TABLE questions (
-  id TEXT PRIMARY KEY,
-  text TEXT NOT NULL,
-  options TEXT NOT NULL,
-  correct_index INTEGER NOT NULL,
-  category TEXT NOT NULL,
-  source TEXT NOT NULL,
-  difficulty TEXT NOT NULL
-);
+- **Solo** : campagne CLASSIC ou SUBJECT, vies rechargées à chaque niveau.
+- **Room privée** : code à 6 caractères, 2 à 8 joueurs, démarrage par le host.
+- **Room publique** : matchmaking par mode, catégorie et difficulté ; small room après 2 minutes.
+- **TikTok** : les viewers répondent `A`, `B`, `C` ou `D` dans le chat ; overlay OBS et console host.
+- Une fin naturelle affiche l'article final avant le classement ; une fin anticipée web/solo (élimination, moins de 2 actifs) passe directement de `REVEAL` à `MATCH_OVER`. Une room TikTok ne s'arrête pas sur `< 2` actifs.
 
-CREATE TABLE questions_pending (
-  id TEXT PRIMARY KEY,
-  text TEXT NOT NULL,
-  options TEXT NOT NULL,
-  correct_index INTEGER NOT NULL,
-  category TEXT NOT NULL,
-  difficulty TEXT NOT NULL,
-  created_at INTEGER NOT NULL
-);
-Écriture dans scores à chaque ROUND_END.
-Route GET /leaderboard → top 50.
-ADR-007 — Adaptateur TikTokFichier : server/tiktok-adapter.tsComportement :
-Utilise tiktok-live-connector.
-Se connecte au pseudo du créateur.
-Mappe uniqueId → playerId de la room TikTok.
-Commentaire A, B, C ou D → événement ANSWER avec choiceIndex correspondant.
-Injecte dans GameEngine.handleEvent comme n’importe quel autre client.
-Fallback documenté dans le README : si le connecteur tombe, l’animateur tape les réponses manuellement.
-ADR-008 — SonsDossier : public/sounds/
+## Architecture en un coup d'œil
 
-Fichiers : correct.mp3, wrong.mp3, lobby-join.mp3, countdown-tick.mp3, level-up.mp3Hook : client/hooks/useSound.ts
+```text
+Navigateur joueur ─┐
+Overlay OBS ───────┼── HTTP / Socket.io ──► Express + Socket.io
+Console host ──────┘                              │
+                                                  ▼
+                                         RoomManager (mémoire)
+                                                  │
+                                                  ▼
+                                         Moteur pur (reduce/tick)
+                                                  │
+                        ┌─────────────────────────┼─────────────────────┐
+                        ▼                         ▼                     ▼
+                   SQLite (scores)          JSON (questions)      TikTok adapter
+```
 
-Déclenché uniquement par les événements socket reçus.ADR-009 — Accessibilité
-Contraste minimum AA sur tous les composants UI.
-aria-label sur chaque option de réponse.
-Navigation clavier complète (Tab, Entrée, Échap).
-Test obligatoire avec VoiceOver avant release.
-ADR-010 — Gestion d’erreurs et robustesse
-Toutes les routes Express et tous les handlers Socket.io sont entourés de try/catch.
-Gemini : timeout 5 s + 1 retry. En cas d’échec → fallback StaticProvider.
-SQLite corrompu → le serveur démarre quand même, persistance désactivée pour la session, log d’erreur.
-Rate limiting : 100 req/min par IP (HTTP) + 10 événements/seconde par socket.
-ADR-011 — TestsOutil : VitestCouverture minimale : 80 % sur le dossier server/.Tests obligatoires :
-Toutes les transitions légales et illégales de la machine à états.
-Timer avec fake timers.
-Scoring (vies, niveaux).
-File d’attente publique (4 joueurs + proposition 2-3).
-Reconnexion socket.
-ADR-012 — Déploiement
-Dockerfile multi-stage (build Vite + runtime Node).
-docker-compose.yml avec volume pour data/.
-Variables d’environnement : GEMINI_API_KEY, PORT, NODE_ENV, QUESTION_SOURCE.
-CI GitHub Actions : lint + build + tests sur chaque push main.
-ADR-013 — Sécurité
-GEMINI_API_KEY uniquement côté serveur.
-Validation stricte des événements socket (choiceIndex entre 0 et 3).
-CORS restreint en production.
-ADR-014 — Critères de sortie
-Partie complète jouable à 2 joueurs minimum (privé + public).
-Overlay TikTok fonctionnel.
-Live d’1 heure avec 20 viewers sans crash (testé sur compte secondaire).
-Latence chat → événement serveur < 500 ms.
-Classement persistant après redémarrage.
+- **HTTP** : sessions, rooms, file, leaderboard, santé, administration.
+- **Socket.io** : entrée de room, ready, start, réponses, continuation, pause, votes, snapshots.
+- **SQLite** : sessions, matchs, scores, questions approuvées ; fallback mémoire si indisponible.
+- **Moteur** : aucune I/O, aucun accès réseau, aucune dépendance au transport.
+- **Client** : React + Zustand, aucune règle de jeu.
+
+## Documentation
+
+La documentation est la référence d'implémentation. Aucune décision ouverte n'est laissée au développeur.
+
+| Document | Contenu |
+| --- | --- |
+| [docs/ADR.md](docs/ADR.md) | 18 décisions d'architecture binding. |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | 78 décisions explicites et dettes assumées. |
+| [docs/SPECIFICATION.md](docs/SPECIFICATION.md) | Règles, modes, phases, scores, matchmaking, TikTok. |
+| [docs/PROTOCOL.md](docs/PROTOCOL.md) | Contrat HTTP, Socket.io, payloads, erreurs. |
+| [docs/DATA-MODEL.md](docs/DATA-MODEL.md) | Schéma SQLite, JSON des questions, leaderboard. |
+| [docs/SECURITY.md](docs/SECURITY.md) | Menace, authentification, CSP, secrets, vie privée. |
+| [docs/TESTING.md](docs/TESTING.md) | Pyramide, cas obligatoires, couverture, CI. |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Local, Docker, TLS, migrations, runbook. |
+| [docs/UI-UX.md](docs/UI-UX.md) | Écrans, tokens, accessibilité, overlay, control. |
+| [docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) | Phases, dépendances, estimation, critères de sortie. |
+
+Ordre de lecture recommandé :
+
+1. ce README ;
+2. `ADR.md` puis `DECISIONS.md` ;
+3. `SPECIFICATION.md` ;
+4. `PROTOCOL.md` et `DATA-MODEL.md` ;
+5. `SECURITY.md`, `TESTING.md`, `UI-UX.md` ;
+6. `IMPLEMENTATION-PLAN.md` et `DEPLOYMENT.md`.
+
+## État du dépôt
+
+La documentation est gelée ; les phases 0 à 2 sont en place côté outillage et données :
+
+- `vite.config.ts` n'expose plus `GEMINI_API_KEY` et `@google/genai` a été retiré du runtime ;
+- Tailwind est compilé localement ; plus aucun CDN, importmap ni Google Fonts ;
+- pnpm est le gestionnaire de paquets du dépôt ; `pnpm-lock.yaml` est présent et à jour ;
+- `pnpm install --frozen-lockfile`, `pnpm run lint`, `pnpm run typecheck`, `pnpm test` et `pnpm run build` passent ;
+- la CI vérifie les secrets, le lint, les types, les données, les tests et le build ;
+- un serveur Express minimal expose `/api/health` et le proxy Vite est en place ;
+- `data/questions.json` contient 244 questions legacy uniques, validées par `pnpm run data:validate` ;
+- `scripts/extract-legacy-questions.ts`, `scripts/validate-questions.ts` et `scripts/import-questions.ts` sont en place ; l'import SQLite est atomique et testé ;
+- 234 articles restent sous la cible éditoriale de 200 caractères et les licences d'images legacy restent à revoir.
+
+Le dépôt contient encore le prototype v1 côté client :
+
+- `components/EncyclaGame.tsx` calcule le jeu côté client ;
+- `services/geminiService.ts` reste la source d'extraction legacy ;
+- `components/ArticleViewer.tsx` utilise `dangerouslySetInnerHTML` ;
+- le serveur Express et le harnais Vitest sont en place, mais l'engine, la persistance SQLite et les tests métier restent à écrire.
+
+Ces points sont traités dans les phases 3 à 5 de `IMPLEMENTATION-PLAN.md`. Tant que l'implémentation n'est pas terminée, le prototype ne doit pas être déployé publiquement.
+
+## Démarrage cible
+
+Prérequis : Node.js 22 et pnpm 10.28 (ou `corepack enable`). Après les phases 0 à 5 :
+
+```bash
+git clone <repo>
+cd encycla
+pnpm install --frozen-lockfile
+cp .env.example .env
+pnpm run db:migrate
+pnpm run data:import
+pnpm run dev
+```
+
+- Client : `http://localhost:5173`
+- Serveur : `http://localhost:3000`
+- Le client Vite proxy `/api` et `/socket.io` vers le serveur.
+
+### Prototype actuel
+
+Le prototype se lance encore avec :
+
+```bash
+pnpm install --frozen-lockfile
+pnpm run dev
+```
+
+Il ne représente pas l'architecture cible. Ne pas l'utiliser comme base de déploiement.
+
+## Structure cible
+
+```text
+client/          React, Zustand, vues, styles, assets
+server/          Express, Socket.io, moteur, rooms, persistance, TikTok
+shared/          types, schémas Zod, constantes, protocole
+data/            questions.json, base SQLite non versionnée
+scripts/         extraction, validation, import, génération de contenu, charge
+tests/           unitaires, intégration, e2e, fixtures
+docs/            documentation de référence
+```
+
+Détail complet dans [docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md).
+
+## Configuration
+
+| Variable | Défaut | Rôle |
+| --- | --- | --- |
+| `NODE_ENV` | `development` | Environnement. |
+| `PORT` | `3000` | Port HTTP/Socket.io. |
+| `PUBLIC_ORIGIN` | — | Origin public en production. |
+| `DATABASE_PATH` | `data/encycla.db` | Base SQLite. |
+| `ADMIN_TOKEN` | — | Routes admin et création TikTok. |
+| `TIKTOK_ENABLED` | `false` | Active le connecteur. |
+| `TIKTOK_USERNAME` | — | Compte TikTok du live. |
+| `TIKTOK_SESSION_COOKIE` | — | Cookie de session TikTok. |
+| `GEMINI_API_KEY` | — | Scripts de contenu hors ligne uniquement. |
+| `LOG_LEVEL` | `info` | Verbosité des logs. |
+
+Règles :
+
+- `.env` n'est jamais commité.
+- Aucune variable secrète n'est préfixée `VITE_`.
+- `GEMINI_API_KEY` n'est jamais montée dans le runtime de jeu.
+- `TIKTOK_USERNAME` et `TIKTOK_SESSION_COOKIE` sont obligatoires si `TIKTOK_ENABLED=true`.
+- Le serveur refuse de démarrer en production sans `ADMIN_TOKEN` et `PUBLIC_ORIGIN`.
+
+## Qualité et sécurité
+
+### Qualité
+
+- TypeScript strict.
+- ESLint + Prettier.
+- Vitest pour le moteur, le serveur et le client.
+- Playwright pour les parcours multi-joueurs.
+- Couverture minimale : 95 % branches sur `server/game`, 80 % sur `server`, 70 % sur `client`.
+- CI : lint, typecheck, données, tests, build, e2e, audit, secrets.
+
+### Sécurité
+
+- Aucun secret dans le bundle client.
+- Tokens de session hachés en base.
+- Tokens overlay/control scoped à une room, dans le fragment d'URL.
+- CSP stricte, pas de `unsafe-inline`, pas de `unsafe-eval`.
+- Aucun `dangerouslySetInnerHTML`.
+- Validation Zod de toutes les entrées.
+- Rate limiting HTTP et Socket.io.
+- La bonne réponse n'est jamais envoyée avant `REVEAL`.
+- Images limitées à une allowlist HTTPS.
+
+Détail dans [docs/SECURITY.md](docs/SECURITY.md).
+
+## Déploiement
+
+- Une seule instance Node et SQLite local en v1.
+- Docker multi-stage, runtime non-root.
+- Reverse proxy TLS (Caddy ou Nginx).
+- Migrations et synchronisation JSON → SQLite au démarrage ; `pnpm run data:import` reste disponible pour un import manuel.
+- Sauvegarde SQLite par `VACUUM INTO`.
+- Un redémarrage perd les rooms ; les matchs en cours deviennent `abandoned`.
+
+Procédure complète dans [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Contenu
+
+- La banque actuelle contient **244 questions uniques**.
+- CLASSIC nécessite **200 questions approuvées**.
+- SUBJECT nécessite **20 questions par catégorie** ; les catégories actuelles en contiennent 12 à 16.
+- En conséquence, SUBJECT est désactivé par catégorie tant que le seuil n'est pas atteint.
+- La bonne réponse est en position B dans 155 cas sur 257 : les options sont mélangées à chaque tirage.
+- Les articles sont du texte brut, sans HTML.
+- Les images sont des URLs Wikimedia créditées.
+- Aucune génération Gemini au runtime ; la génération est hors ligne, avec revue humaine.
+
+Voir [docs/DATA-MODEL.md](docs/DATA-MODEL.md).
+
+## Non-objectifs v1
+
+- Multi-instance et scaling horizontal.
+- Mode hors-ligne.
+- Génération Gemini en direct.
+- Comptes email/mot de passe.
+- Matchmaking classé ou ELO.
+- Chat entre joueurs.
+- Modération du contenu TikTok.
+- Replay, historique de partie, rematch.
+- Spectateurs web.
+- Upload d'avatar.
+
+## Feuille de route
+
+| Phase | Contenu |
+| --- | --- |
+| 0 | Assainissement, lockfile, secrets, CI minimale. |
+| 1 | TypeScript strict, lint, tests, build serveur/client. |
+| 2 | Extraction, validation et import des questions. |
+| 3 | Moteur pur, scoring, state machine, tests. |
+| 4 | SQLite, sessions, identité, persistance. |
+| 5 | HTTP, Socket.io, rooms, orchestration. |
+| 6 | Client joueur, vues, accessibilité, sons. |
+| 7 | Matchmaking public et small rooms. |
+| 8 | TikTok, overlay, control. |
+| 9 | Durcissement sécurité, charge, a11y. |
+| 10 | Extension du contenu SUBJECT. |
+| 11 | Release et live test. |
+
+Détail et estimation dans [docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md).
+
+## Contribuer
+
+- Lire les documents de référence avant toute modification.
+- Ne jamais implémenter une règle dans le client.
+- Ne jamais ajouter une dépendance sans vérifier qu'elle existe déjà ou justifier son ajout.
+- Ajouter ou mettre à jour un test pour chaque comportement.
+- Ne jamais commiter de secret.
+- Ne jamais utiliser de CDN pour les polices, le JS ou le CSS ; les images éditoriales suivent l'allowlist CSP.
+- Ne jamais utiliser `dangerouslySetInnerHTML`.
+- Ne jamais écrire de HTML dans les articles.
+- Ne jamais introduire de décision produit implicite : mettre à jour `DECISIONS.md` et `ADR.md`.
+
+## Licence et crédits
+
+- Code : licence à définir avant publication.
+- Questions et articles : contenu original, à relire et créditer.
+- Images : Wikimedia Commons, crédit et licence affichés par question.
+- Polices : Merriweather et Inter, SIL Open Font License.
+- Sons : fichiers originaux ou CC0, crédités dans `client/assets/sounds/CREDITS.md`.

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { GameState, GameMode, Category, Difficulty } from './types';
 import { EncyclopediaHome } from './components/EncyclopediaHome';
-import { MindMazeGame } from './components/MindMazeGame';
+import { EncyclaGame } from './components/EncyclaGame';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.MENU);
@@ -25,11 +25,11 @@ const App: React.FC = () => {
         {gameState === GameState.MENU ? (
             <EncyclopediaHome onStart={handleStartGame} />
         ) : (
-            <MindMazeGame 
+            <EncyclaGame
                 mode={mode}
                 initialCategory={category}
                 initialDifficulty={difficulty}
-                onExit={handleExit} 
+                onExit={handleExit}
             />
         )}
     </div>

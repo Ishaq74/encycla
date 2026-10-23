@@ -13,7 +13,7 @@ export const RetroWindow: React.FC<RetroWindowProps> = ({ children, title, class
       {/* Title Bar */}
       <div className="bg-[#000080] px-2 py-1 flex justify-between items-center mb-1">
         <span className="text-white font-bold tracking-wide text-sm md:text-base truncate">
-          {title || "Encarta MindMaze"}
+          {title || "Encycla"}
         </span>
         <div className="flex gap-1">
             {/* Minimize/Maximize fake buttons */}

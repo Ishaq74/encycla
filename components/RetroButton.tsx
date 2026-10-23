@@ -7,7 +7,7 @@ interface RetroButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>
 export const RetroButton: React.FC<RetroButtonProps> = ({ 
   children, 
   className = '', 
-  variant = 'normal',
+  variant: _variant = 'normal',
   ...props 
 }) => {
   

@@ -15,7 +15,7 @@ const REAL_MENU_IMAGES = {
     CONTEST: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/ChessSet.jpg/800px-ChessSet.jpg"
 };
 
-const TRIVIA_DATABASE: Record<string, QuestionData[]> = {
+export const TRIVIA_DATABASE: Record<string, QuestionData[]> = {
   [Category.FAUNA]: [
     {
       subject: "Lion",
@@ -2424,7 +2424,7 @@ const TRIVIA_DATABASE: Record<string, QuestionData[]> = {
   ]
 };
 
-const GENERAL_POOL: QuestionData[] = [
+export const GENERAL_POOL: QuestionData[] = [
   {
     subject: "Full Moon",
     questionText: "Identify this celestial body.",
@@ -2631,7 +2631,7 @@ const GENERAL_POOL: QuestionData[] = [
 
 export const fetchQuestionData = async (
   category: Category,
-  difficulty: Difficulty
+  _difficulty: Difficulty
 ): Promise<QuestionData> => {
     let pool = TRIVIA_DATABASE[category] || [];
     if (pool.length === 0) {
@@ -2643,13 +2643,13 @@ export const fetchQuestionData = async (
     }
     
     // Sélection aléatoire d'une question dans la base de données statique
-    const randomQ = pool[Math.floor(Math.random() * pool.length)];
-    
-    // Si l'image manque, on utilise une image générique de la base de données
-    let imageUrl = randomQ.base64Image;
-    if (!imageUrl) {
-         imageUrl = GENERAL_POOL[0].base64Image; // Fallback sûr
+    const randomQ = pool[Math.floor(Math.random() * pool.length)] ?? GENERAL_POOL[0];
+    if (!randomQ) {
+        throw new Error("Question pool is empty.");
     }
+
+    // Si l'image manque, on utilise une image générique de la base de données
+    const imageUrl = randomQ.base64Image || GENERAL_POOL[0]?.base64Image || "";
 
     return {
         ...randomQ,
@@ -2666,7 +2666,7 @@ export const getCategoryThumbnail = (category: Category): string => {
   const pool = TRIVIA_DATABASE[category];
   if (pool && pool.length > 0) {
     const randomQ = pool[Math.floor(Math.random() * pool.length)];
-    return randomQ.base64Image || "";
+    return randomQ?.base64Image || "";
   }
   return "";
 };

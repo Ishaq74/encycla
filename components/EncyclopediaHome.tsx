@@ -10,7 +10,7 @@ interface EncyclopediaHomeProps {
 
 export const EncyclopediaHome: React.FC<EncyclopediaHomeProps> = ({ onStart }) => {
   const [view, setView] = React.useState<'MAIN' | 'SUBJECT_SELECT'>('MAIN');
-  const [selectedCategory, setSelectedCategory] = React.useState<Category>(CATEGORIES[0]);
+  const [selectedCategory, setSelectedCategory] = React.useState<Category>(CATEGORIES[0] ?? Category.FAUNA);
 
   // Generate stable thumbnails once on mount so they don't flicker on re-renders
   const categoryThumbnails = useMemo(() => {

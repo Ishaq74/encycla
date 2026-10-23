@@ -1,0 +1,23 @@
+node_modules
+dist
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+.env.example
+docs
+README.md
+CREDITS.md
+
+# Legacy prototype, replaced during the server migration.
+App.tsx
+components/ArticleViewer.tsx
+components/EncyclaGame.tsx
+components/EncyclopediaHome.tsx
+components/RetroButton.tsx
+components/RetroWindow.tsx
+constants.ts
+index.html
+index.tsx
+services/geminiService.ts
+types.ts

@@ -29,7 +29,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ data, onContinue }
   }, [data.articleBody, data.explanation]);
 
   return (
-    <div className="flex flex-col h-full w-full animate-in fade-in duration-700 overflow-hidden bg-[#f8f5f0] text-slate-900 font-serif-encarta relative">
+    <div className="flex flex-col h-full w-full animate-in fade-in duration-700 overflow-hidden bg-[#f8f5f0] text-slate-900 font-serif-encycla relative">
        {/* Background Paper Texture */}
        <div className="absolute inset-0 opacity-[0.05] pointer-events-none z-0" style={{backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`}}></div>
 
@@ -52,7 +52,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ data, onContinue }
                     {readingTime} min read
                  </span>
             </div>
-            <h1 className="text-xl md:text-4xl font-serif-encarta font-bold text-white tracking-wide drop-shadow-md leading-tight line-clamp-1 md:line-clamp-none">
+            <h1 className="text-xl md:text-4xl font-serif-encycla font-bold text-white tracking-wide drop-shadow-md leading-tight line-clamp-1 md:line-clamp-none">
                 {data.articleTitle}
             </h1>
           </div>
@@ -88,7 +88,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ data, onContinue }
                             </div>
                             <div className="flex items-center justify-center mt-2 md:mt-3 gap-2 opacity-70">
                                 <div className="h-px w-6 md:w-8 bg-gray-300"></div>
-                                <p className="text-[9px] md:text-[11px] text-gray-500 font-serif-encarta italic text-center tracking-wide">
+                                <p className="text-[9px] md:text-[11px] text-gray-500 font-serif-encycla italic text-center tracking-wide">
                                     Fig 1. {data.subject && data.subject.trim() !== "" ? data.subject : "Specimen"}
                                 </p>
                                 <div className="h-px w-6 md:w-8 bg-gray-300"></div>
@@ -104,15 +104,15 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ data, onContinue }
                              <div className="absolute left-0 top-0 text-[#d97706] opacity-[0.05] text-9xl leading-none font-serif -translate-y-4 -translate-x-2 pointer-events-none">“</div>
                             
                             <h3 className="text-[#b45309] text-xs font-bold uppercase tracking-widest mb-2">Quick Fact</h3>
-                            <p className="text-gray-800 italic text-base md:text-xl font-serif-encarta leading-relaxed relative z-10">
+                            <p className="text-gray-800 italic text-base md:text-xl font-serif-encycla leading-relaxed relative z-10">
                                 {data.explanation}
                             </p>
                         </div>
                         
                         {/* Main Body */}
-                        <div className="font-serif-encarta text-base md:text-lg leading-7 md:leading-8 text-gray-700 text-justify">
+                        <div className="font-serif-encycla text-base md:text-lg leading-7 md:leading-8 text-gray-700 text-justify">
                              {/* Elegant Drop Cap */}
-                            <span className="float-left text-[4rem] md:text-[5rem] font-bold text-[#1e3a8a] mr-3 md:mr-4 mt-[-12px] md:mt-[-18px] font-serif leading-none opacity-90 select-none drop-shadow-sm font-serif-encarta">
+                            <span className="float-left text-[4rem] md:text-[5rem] font-bold text-[#1e3a8a] mr-3 md:mr-4 mt-[-12px] md:mt-[-18px] font-serif leading-none opacity-90 select-none drop-shadow-sm font-serif-encycla">
                                 {data.articleBody.charAt(0)}
                             </span>
                             <span dangerouslySetInnerHTML={{ __html: data.articleBody.substring(1) }} />
@@ -126,7 +126,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ data, onContinue }
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
                         <p className="text-[9px] md:text-[11px] text-gray-500 uppercase tracking-[0.2em] font-sans font-bold">
-                            Verified Knowledge • Encarta MindMaze
+                            Verified Knowledge • Encycla
                         </p>
                     </div>
                 </div>

@@ -13,7 +13,7 @@ export const LOADING_MESSAGES = [
   "Consulting the Library...",
   "Retrieving Scroll...",
   "Loading Question...",
-  "Opening Encarta Database...",
+  "Opening Encycla Database...",
   "Reading Microfilm...",
 ];
 
