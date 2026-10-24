@@ -8,7 +8,7 @@ Encycla est un quiz visuel multijoueur en temps réel : solo, rooms privées, ma
 - **Jeu** : Encycla MindMaze
 - **Langue de l'UI** : anglais
 - **Langue de la documentation** : français
-- **Statut** : documentation d'architecture gelée, implémentation en cours (phase 0 terminée, socle phase 1 en place, données phase 2 extraites)
+- **Statut** : documentation d'architecture gelée, implémentation en cours (phases 0 à 3 en place : outillage, données, moteur de jeu)
 - **Gel de la documentation** : 2026-10-23
 - **Version documentaire** : 2.0
 - **Date** : 2026-10-22
@@ -111,7 +111,7 @@ Ordre de lecture recommandé :
 
 ## État du dépôt
 
-La documentation est gelée ; les phases 0 à 2 sont en place côté outillage et données :
+La documentation est gelée ; les phases 0 à 3 sont en place côté outillage, données et moteur :
 
 - `vite.config.ts` n'expose plus `GEMINI_API_KEY` et `@google/genai` a été retiré du runtime ;
 - Tailwind est compilé localement ; plus aucun CDN, importmap ni Google Fonts ;
@@ -121,6 +121,7 @@ La documentation est gelée ; les phases 0 à 2 sont en place côté outillage e
 - un serveur Express minimal expose `/api/health` et le proxy Vite est en place ;
 - `data/questions.json` contient 244 questions legacy uniques, validées par `pnpm run data:validate` ;
 - `scripts/extract-legacy-questions.ts`, `scripts/validate-questions.ts` et `scripts/import-questions.ts` sont en place ; l'import SQLite est atomique et testé ;
+- `server/game` fournit un moteur pur (reducer + tick, effets injectables), le scoring, la state machine et la sélection des questions ; `pnpm test` couvre 86 tests ;
 - 234 articles restent sous la cible éditoriale de 200 caractères et les licences d'images legacy restent à revoir.
 
 Le dépôt contient encore le prototype v1 côté client :
@@ -128,9 +129,9 @@ Le dépôt contient encore le prototype v1 côté client :
 - `components/EncyclaGame.tsx` calcule le jeu côté client ;
 - `services/geminiService.ts` reste la source d'extraction legacy ;
 - `components/ArticleViewer.tsx` utilise `dangerouslySetInnerHTML` ;
-- le serveur Express et le harnais Vitest sont en place, mais l'engine, la persistance SQLite et les tests métier restent à écrire.
+- le serveur Express et le harnais Vitest sont en place, mais la persistance SQLite, l'orchestration Socket.io et le client cible restent à écrire.
 
-Ces points sont traités dans les phases 3 à 5 de `IMPLEMENTATION-PLAN.md`. Tant que l'implémentation n'est pas terminée, le prototype ne doit pas être déployé publiquement.
+Ces points sont traités dans les phases 4 à 6 de `IMPLEMENTATION-PLAN.md`. Tant que l'implémentation n'est pas terminée, le prototype ne doit pas être déployé publiquement.
 
 ## Démarrage cible
 

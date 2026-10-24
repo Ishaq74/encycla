@@ -7,6 +7,7 @@ import {
   computeContestBonuses,
   difficultyForClassicLevel,
   isClassable,
+  statusGroup,
   timerMsForDifficulty,
   toFinalResult,
   toScoreRecord,
@@ -32,17 +33,20 @@ describe('classic scoring', () => {
     ['Novice', 1, 25000, 0, 100],
     ['Adventurer', 5, 8000, 3, 710],
     ['Wizard', 10, 14000, 12, 1700],
-  ] as const)('%s level %i at %i ms with streak %i gives %i', (difficulty, level, time, streak, expected) => {
-    expect(
-      computeClassicPoints({
-        correct: true,
-        difficulty,
-        level,
-        responseTimeMs: time,
-        streakBefore: streak,
-      }),
-    ).toBe(expected);
-  });
+  ] as const)(
+    '%s level %i at %i ms with streak %i gives %i',
+    (difficulty, level, time, streak, expected) => {
+      expect(
+        computeClassicPoints({
+          correct: true,
+          difficulty,
+          level,
+          responseTimeMs: time,
+          streakBefore: streak,
+        }),
+      ).toBe(expected);
+    },
+  );
 
   it('never awards points for an incorrect answer', () => {
     expect(
@@ -54,6 +58,18 @@ describe('classic scoring', () => {
         streakBefore: 20,
       }),
     ).toBe(0);
+  });
+
+  it('treats a missing response time as zero', () => {
+    expect(
+      computeClassicPoints({
+        correct: true,
+        difficulty: 'Novice',
+        level: 1,
+        responseTimeMs: null,
+        streakBefore: 0,
+      }),
+    ).toBe(150);
   });
 
   it('maps CLASSIC levels to difficulty profiles', () => {
@@ -122,8 +138,22 @@ describe('final ranking', () => {
       player({ id: 'a', score: 100, correctCount: 1, wrongCount: 1, joinedAt: 2 }),
       player({ id: 'b', score: 100, correctCount: 2, wrongCount: 1, joinedAt: 3 }),
       player({ id: 'c', score: 100, correctCount: 1, wrongCount: 0, joinedAt: 4 }),
-      player({ id: 'd', score: 100, correctCount: 1, wrongCount: 0, totalResponseMs: 500, joinedAt: 5 }),
-      player({ id: 'e', score: 100, correctCount: 1, wrongCount: 0, totalResponseMs: 500, joinedAt: 1 }),
+      player({
+        id: 'd',
+        score: 100,
+        correctCount: 1,
+        wrongCount: 0,
+        totalResponseMs: 500,
+        joinedAt: 5,
+      }),
+      player({
+        id: 'e',
+        score: 100,
+        correctCount: 1,
+        wrongCount: 0,
+        totalResponseMs: 500,
+        joinedAt: 1,
+      }),
     ];
 
     expect(
@@ -157,6 +187,11 @@ describe('final ranking', () => {
     expect(isClassable(left)).toBe(false);
     expect(isClassable(player({ status: 'FORFEITED' }))).toBe(false);
     expect(isClassable(player({ status: 'ELIMINATED' }))).toBe(true);
+    expect(statusGroup('CONNECTED')).toBe(0);
+    expect(statusGroup('DISCONNECTED')).toBe(0);
+    expect(statusGroup('ELIMINATED')).toBe(1);
+    expect(statusGroup('FORFEITED')).toBe(2);
+    expect(statusGroup('LEFT')).toBe(3);
   });
 
   it('compares equal players as tied and exports score/final records', () => {

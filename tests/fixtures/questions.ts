@@ -48,7 +48,9 @@ export const TEST_QUESTIONS: readonly QuestionRecord[] = CATEGORY_VALUES.flatMap
     ),
 );
 
-export function makeProvider(questions: readonly QuestionRecord[] = TEST_QUESTIONS): QuestionProvider {
+export function makeProvider(
+  questions: readonly QuestionRecord[] = TEST_QUESTIONS,
+): QuestionProvider {
   return {
     getQuestions: () => questions,
   };

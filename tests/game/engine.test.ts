@@ -89,7 +89,7 @@ function startTikTok(h: Harness): GameState {
 }
 
 function startSolo(h: Harness): GameState {
-  let state = lobby(h, { isSolo: true });
+  const state = lobby(h, { isSolo: true });
   return event(h, state, { type: 'GAME_START', actorId: 'p1' });
 }
 

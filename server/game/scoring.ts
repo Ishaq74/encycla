@@ -160,10 +160,7 @@ export function toScoreRecord(player: PlayerState): ScoreRecord {
   };
 }
 
-export function toFinalResult(
-  player: PlayerState,
-  entry: FinalRankingEntry,
-): FinalResult {
+export function toFinalResult(player: PlayerState, entry: FinalRankingEntry): FinalResult {
   return {
     playerId: player.id,
     rank: entry.rank,

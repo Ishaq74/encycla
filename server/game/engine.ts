@@ -201,13 +201,12 @@ function startCountdown(
   return ok(next, effects);
 }
 
-function startQuestion(
-  state: GameState,
-  now: number,
-  deps: EngineDeps,
-): InternalResult {
+function startQuestion(state: GameState, now: number, deps: EngineDeps): InternalResult {
   const selection = state.preloadedQuestion
-    ? { runtime: state.preloadedQuestion, recycled: state.usedQuestionIds.includes(state.preloadedQuestion.question.id) }
+    ? {
+        runtime: state.preloadedQuestion,
+        recycled: state.usedQuestionIds.includes(state.preloadedQuestion.question.id),
+      }
     : selectQuestion(
         deps.questions.getQuestions(),
         state.category,
@@ -297,7 +296,7 @@ function revealFor(question: QuestionRuntime) {
   };
 }
 
-function resolveQuestion(state: GameState, now: number, deps: EngineDeps): InternalResult {
+function resolveQuestion(state: GameState, now: number): InternalResult {
   const runtime = state.question;
   if (!runtime) {
     return unchanged(state);
@@ -306,10 +305,7 @@ function resolveQuestion(state: GameState, now: number, deps: EngineDeps): Inter
   const timerMs = questionTimerMs(state);
   const startedAt = state.phaseStartedAt ?? now;
   const participantIds = Array.from(
-    new Set([
-      ...state.questionParticipantIds,
-      ...activePlayers(state).map((player) => player.id),
-    ]),
+    new Set([...state.questionParticipantIds, ...activePlayers(state).map((player) => player.id)]),
   );
   const results = [];
   const updatedPlayers = { ...state.players };
@@ -324,9 +320,7 @@ function resolveQuestion(state: GameState, now: number, deps: EngineDeps): Inter
     const correct = answer !== null && answer.choiceIndex === runtime.correctIndex;
     const timedOut = answer === null;
     const responseTimeMs =
-      answer === null
-        ? null
-        : Math.min(timerMs, Math.max(0, answer.receivedAt - startedAt));
+      answer === null ? null : Math.min(timerMs, Math.max(0, answer.receivedAt - startedAt));
 
     let points = 0;
     let lives = player.lives;
@@ -417,7 +411,8 @@ function resolveQuestion(state: GameState, now: number, deps: EngineDeps): Inter
   }
 
   const nextQuestionsResolved = state.questionsResolvedThisLevel + 1;
-  const isFinal = state.level >= state.totalLevels && nextQuestionsResolved >= state.questionsPerLevel;
+  const isFinal =
+    state.level >= state.totalLevels && nextQuestionsResolved >= state.questionsPerLevel;
   const remainingActive = Object.values(updatedPlayers).filter(isActive).length;
   const minimumActive = state.isSolo ? 1 : 2;
   const earlyFinish = !state.isTikTok && !isFinal && remainingActive < minimumActive;
@@ -497,11 +492,7 @@ function advanceFromArticle(state: GameState, now: number, deps: EngineDeps): In
   return startQuestion(state, now, deps);
 }
 
-function advanceFromLevelComplete(
-  state: GameState,
-  now: number,
-  deps: EngineDeps,
-): InternalResult {
+function advanceFromLevelComplete(state: GameState, now: number, deps: EngineDeps): InternalResult {
   const minimumActive = state.isSolo ? 1 : 2;
   if (!state.isTikTok && activeCount(state) < minimumActive) {
     return finishMatch(state, now, false);
@@ -628,8 +619,7 @@ function resumeState(state: GameState, now: number): InternalResult {
 
   const remainingMs = state.remainingMsWhenPaused ?? 0;
   const pausedFor = state.pausedAt === null ? 0 : Math.max(0, now - state.pausedAt);
-  const phaseStartedAt =
-    state.phaseStartedAt === null ? now : state.phaseStartedAt + pausedFor;
+  const phaseStartedAt = state.phaseStartedAt === null ? now : state.phaseStartedAt + pausedFor;
 
   const next: GameState = {
     ...state,
@@ -645,7 +635,10 @@ function resumeState(state: GameState, now: number): InternalResult {
   return ok(next, effects);
 }
 
-function actorIsHost(state: GameState, event: { actorId: string | null; isControl?: boolean }): boolean {
+function actorIsHost(
+  state: GameState,
+  event: { actorId: string | null; isControl?: boolean },
+): boolean {
   if (state.isTikTok) {
     return event.isControl === true;
   }
@@ -659,11 +652,7 @@ function minimumActive(state: GameState): number {
   return state.isSolo ? 1 : 2;
 }
 
-function applyActiveConsequences(
-  state: GameState,
-  now: number,
-  deps: EngineDeps,
-): InternalResult {
+function applyActiveConsequences(state: GameState, now: number): InternalResult {
   if (state.phase === 'CLOSED' || state.phase === 'MATCH_OVER') {
     return unchanged(state);
   }
@@ -673,8 +662,7 @@ function applyActiveConsequences(
       return unchanged(state);
     }
     const invalidPublic =
-      state.isPublic &&
-      sortedPlayers(state).some((player) => player.status !== 'CONNECTED');
+      state.isPublic && sortedPlayers(state).some((player) => player.status !== 'CONNECTED');
     if (invalidPublic || activeCount(state) < minimumActive(state)) {
       return closeRoom(state, now, 'MATCH_CANCELLED', state.isPublic);
     }
@@ -683,7 +671,7 @@ function applyActiveConsequences(
 
   if (state.phase === 'QUESTION') {
     if (!state.isTikTok && activeCount(state) === 0) {
-      return resolveQuestion(state, now, deps);
+      return resolveQuestion(state, now);
     }
     return unchanged(state);
   }
@@ -769,16 +757,18 @@ function expireDisconnects(state: GameState, now: number): InternalResult {
   return { state: next, effects, changed: true };
 }
 
-function handleJoin(state: GameState, event: Extract<GameEvent, { type: 'PLAYER_JOIN' }>, now: number): InternalResult {
+function handleJoin(
+  state: GameState,
+  event: Extract<GameEvent, { type: 'PLAYER_JOIN' }>,
+  now: number,
+): InternalResult {
   if (state.players[event.player.id]) {
     return unchanged(state);
   }
 
   const allowed =
     state.phase === 'LOBBY' ||
-    (state.isTikTok &&
-      state.phase !== 'CLOSED' &&
-      state.phase !== 'MATCH_OVER');
+    (state.isTikTok && state.phase !== 'CLOSED' && state.phase !== 'MATCH_OVER');
   if (!allowed) {
     return unchanged(state);
   }
@@ -787,11 +777,7 @@ function handleJoin(state: GameState, event: Extract<GameEvent, { type: 'PLAYER_
     return unchanged(state);
   }
 
-  const player = createPlayer(
-    event.player,
-    now,
-    state.mode === 'CONTEST' ? 0 : MAX_LIVES,
-  );
+  const player = createPlayer(event.player, now, state.mode === 'CONTEST' ? 0 : MAX_LIVES);
   let next = withPlayer(state, player);
   next = {
     ...next,
@@ -799,10 +785,7 @@ function handleJoin(state: GameState, event: Extract<GameEvent, { type: 'PLAYER_
     joinedPlayerCount: next.joinedPlayerCount + 1,
   };
 
-  if (
-    next.phase === 'QUESTION' ||
-    (next.phase === 'PAUSED' && next.pausedFrom === 'QUESTION')
-  ) {
+  if (next.phase === 'QUESTION' || (next.phase === 'PAUSED' && next.pausedFrom === 'QUESTION')) {
     next = {
       ...next,
       questionParticipantIds: [...next.questionParticipantIds, player.id],
@@ -812,7 +795,7 @@ function handleJoin(state: GameState, event: Extract<GameEvent, { type: 'PLAYER_
   return ok(next);
 }
 
-function handleLeave(state: GameState, playerId: string, now: number, deps: EngineDeps): InternalResult {
+function handleLeave(state: GameState, playerId: string, now: number): InternalResult {
   const player = state.players[playerId];
   if (!player) {
     return unchanged(state);
@@ -860,7 +843,7 @@ function handleLeave(state: GameState, playerId: string, now: number, deps: Engi
     },
   ];
 
-  const consequences = applyActiveConsequences(next, now, deps);
+  const consequences = applyActiveConsequences(next, now);
   if (consequences.changed) {
     return {
       state: consequences.state,
@@ -878,7 +861,7 @@ function handleDisconnect(state: GameState, playerId: string, now: number): Inte
     return unchanged(state);
   }
 
-  let next = withPlayer(state, {
+  const next = withPlayer(state, {
     ...player,
     status: 'DISCONNECTED',
     disconnectedAt: now,
@@ -911,11 +894,7 @@ function handleReconnect(state: GameState, playerId: string): InternalResult {
   return ok(withPlayer(state, { ...player, status: 'CONNECTED', disconnectedAt: null }));
 }
 
-function handleReady(
-  state: GameState,
-  playerId: string,
-  ready: boolean,
-): InternalResult {
+function handleReady(state: GameState, playerId: string, ready: boolean): InternalResult {
   if (state.phase !== 'LOBBY') {
     return unchanged(state);
   }
@@ -997,7 +976,6 @@ function handleAnswer(
   questionId: string,
   choiceIndex: number,
   now: number,
-  deps: EngineDeps,
 ): ReduceResult {
   if (state.phase !== 'QUESTION') {
     return reject(state, 'INVALID_PHASE', 'Answers are only accepted during a question.');
@@ -1028,7 +1006,7 @@ function handleAnswer(
     return reject(state, 'ANSWER_TOO_LATE', 'The question timer has expired.');
   }
 
-  let next = withPlayer(state, {
+  const next = withPlayer(state, {
     ...player,
     answer: { questionId, choiceIndex, receivedAt: now },
   });
@@ -1047,7 +1025,7 @@ function handleAnswer(
     connected.every((candidate) => candidate.answer?.questionId === questionId);
 
   if (allAnswered) {
-    const resolved = resolveQuestion(next, now, deps);
+    const resolved = resolveQuestion(next, now);
     return finalize(state, { ...resolved, effects: [...effects, ...resolved.effects] }, true);
   }
 
@@ -1058,7 +1036,6 @@ function handleManualAnswer(
   state: GameState,
   event: Extract<GameEvent, { type: 'HOST_MANUAL_ANSWER' }>,
   now: number,
-  deps: EngineDeps,
 ): ReduceResult {
   if (!state.isTikTok || event.isControl !== true) {
     return reject(state, 'NOT_HOST', 'Only the TikTok control can submit manual answers.');
@@ -1090,7 +1067,7 @@ function handleManualAnswer(
   }
 
   const questionId = state.question.question.id;
-  let next = withPlayer(state, {
+  const next = withPlayer(state, {
     ...player,
     answer: { questionId, choiceIndex: event.choiceIndex, receivedAt: now },
   });
@@ -1109,7 +1086,7 @@ function handleManualAnswer(
     connected.every((candidate) => candidate.answer?.questionId === questionId);
 
   if (allAnswered) {
-    const resolved = resolveQuestion(next, now, deps);
+    const resolved = resolveQuestion(next, now);
     return finalize(state, { ...resolved, effects: [...effects, ...resolved.effects] }, true);
   }
 
@@ -1223,7 +1200,7 @@ function handleHostSkip(
   }
 
   if (state.phase === 'QUESTION') {
-    return finalize(state, resolveQuestion(state, now, deps), true);
+    return finalize(state, resolveQuestion(state, now), true);
   }
   if (state.phase === 'ARTICLE') {
     return finalize(state, advanceFromArticle(state, now, deps), true);
@@ -1236,7 +1213,7 @@ function handleHostClose(
   event: Extract<GameEvent, { type: 'HOST_CLOSE' }>,
   now: number,
 ): ReduceResult {
-  if (!actorIsHost(state, event)) {
+  if (!actorIsHost(state, event) || state.isSolo) {
     return reject(state, 'NOT_HOST', 'Only the host can close the room.');
   }
   if (state.phase === 'CLOSED' || state.phase === 'MATCH_OVER') {
@@ -1245,11 +1222,7 @@ function handleHostClose(
   return finalize(state, closeRoom(state, now, 'HOST_CLOSE', false), true);
 }
 
-function handleTikTokConnection(
-  state: GameState,
-  connected: boolean,
-  now: number,
-): ReduceResult {
+function handleTikTokConnection(state: GameState, connected: boolean, now: number): ReduceResult {
   if (!state.isTikTok) {
     return reject(state, 'INVALID_EVENT', 'Only TikTok rooms track a chat connector.');
   }
@@ -1287,7 +1260,7 @@ function reduceInternal(
       return finalize(state, joined, true);
     }
     case 'PLAYER_LEAVE': {
-      const left = handleLeave(state, event.playerId, now, deps);
+      const left = handleLeave(state, event.playerId, now);
       return finalize(state, left, true);
     }
     case 'PLAYER_DISCONNECT': {
@@ -1305,7 +1278,7 @@ function reduceInternal(
     case 'GAME_START':
       return handleGameStart(state, event, now, deps);
     case 'ANSWER':
-      return handleAnswer(state, event.playerId, event.questionId, event.choiceIndex, now, deps);
+      return handleAnswer(state, event.playerId, event.questionId, event.choiceIndex, now);
     case 'CONTINUE':
       return handleContinue(state, event.playerId, event.phaseToken, now, deps);
     case 'HOST_PAUSE':
@@ -1315,7 +1288,7 @@ function reduceInternal(
     case 'HOST_SKIP':
       return handleHostSkip(state, event, now, deps);
     case 'HOST_MANUAL_ANSWER':
-      return handleManualAnswer(state, event, now, deps);
+      return handleManualAnswer(state, event, now);
     case 'HOST_CLOSE':
       return handleHostClose(state, event, now);
     case 'TIKTOK_CONNECTION_CHANGED':
@@ -1361,21 +1334,27 @@ export function tick(state: GameState, now: number, deps: EngineDeps): ReduceRes
   let changed = expired.changed;
 
   if (working.phase === 'CLOSED') {
-    return changed ? finalize(state, { state: working, effects, changed }, false) : { state, effects };
+    return changed
+      ? finalize(state, { state: working, effects, changed }, false)
+      : { state, effects };
   }
 
   if (working.phase === 'COUNTDOWN' && working.isPublic) {
     if (sortedPlayers(working).some((player) => player.status !== 'CONNECTED')) {
       const cancelled = closeRoom(working, now, 'MATCH_CANCELLED', true);
-      return finalize(state, {
-        state: cancelled.state,
-        effects: [...effects, ...cancelled.effects],
-        changed: true,
-      }, false);
+      return finalize(
+        state,
+        {
+          state: cancelled.state,
+          effects: [...effects, ...cancelled.effects],
+          changed: true,
+        },
+        false,
+      );
     }
   }
 
-  const consequences = applyActiveConsequences(working, now, deps);
+  const consequences = applyActiveConsequences(working, now);
   if (consequences.changed) {
     working = consequences.state;
     effects.push(...consequences.effects);
@@ -1383,81 +1362,115 @@ export function tick(state: GameState, now: number, deps: EngineDeps): ReduceRes
   }
 
   if (working.phase === 'MATCH_OVER' || working.phase === 'CLOSED') {
-    return changed ? finalize(state, { state: working, effects, changed }, false) : { state, effects };
+    return changed
+      ? finalize(state, { state: working, effects, changed }, false)
+      : { state, effects };
   }
 
-  if (
-    connectedCount(working) === 0 &&
-    now - working.lastActivityAt >= ROOM_INACTIVITY_MS
-  ) {
+  if (connectedCount(working) === 0 && now - working.lastActivityAt >= ROOM_INACTIVITY_MS) {
     const closed = closeRoom(working, now, 'INACTIVE', false);
-    return finalize(state, {
-      state: closed.state,
-      effects: [...effects, ...closed.effects],
-      changed: true,
-    }, false);
+    return finalize(
+      state,
+      {
+        state: closed.state,
+        effects: [...effects, ...closed.effects],
+        changed: true,
+      },
+      false,
+    );
   }
 
   if (working.phaseEndsAt === null || now < working.phaseEndsAt) {
-    return changed ? finalize(state, { state: working, effects, changed }, false) : { state, effects };
+    return changed
+      ? finalize(state, { state: working, effects, changed }, false)
+      : { state, effects };
   }
 
   if (working.phase === 'COUNTDOWN') {
-    if (working.isPublic && sortedPlayers(working).some((player) => player.status !== 'CONNECTED')) {
+    if (
+      working.isPublic &&
+      sortedPlayers(working).some((player) => player.status !== 'CONNECTED')
+    ) {
       const cancelled = closeRoom(working, now, 'MATCH_CANCELLED', true);
-      return finalize(state, {
-        state: cancelled.state,
-        effects: [...effects, ...cancelled.effects],
-        changed: true,
-      }, false);
+      return finalize(
+        state,
+        {
+          state: cancelled.state,
+          effects: [...effects, ...cancelled.effects],
+          changed: true,
+        },
+        false,
+      );
     }
     const started = startQuestion(working, now, deps);
-    return finalize(state, {
-      state: started.state,
-      effects: [...effects, ...started.effects],
-      changed: true,
-    }, false);
+    return finalize(
+      state,
+      {
+        state: started.state,
+        effects: [...effects, ...started.effects],
+        changed: true,
+      },
+      false,
+    );
   }
 
   if (working.phase === 'QUESTION') {
-    const resolved = resolveQuestion(working, now, deps);
-    return finalize(state, {
-      state: resolved.state,
-      effects: [...effects, ...resolved.effects],
-      changed: true,
-    }, false);
+    const resolved = resolveQuestion(working, now);
+    return finalize(
+      state,
+      {
+        state: resolved.state,
+        effects: [...effects, ...resolved.effects],
+        changed: true,
+      },
+      false,
+    );
   }
 
   if (working.phase === 'REVEAL') {
     const advanced = working.shouldEndAfterReveal
       ? finishMatch(working, now, false)
       : enterArticle(working, now, deps);
-    return finalize(state, {
-      state: advanced.state,
-      effects: [...effects, ...advanced.effects],
-      changed: true,
-    }, false);
+    return finalize(
+      state,
+      {
+        state: advanced.state,
+        effects: [...effects, ...advanced.effects],
+        changed: true,
+      },
+      false,
+    );
   }
 
   if (working.phase === 'ARTICLE') {
     const advanced = advanceFromArticle(working, now, deps);
-    return finalize(state, {
-      state: advanced.state,
-      effects: [...effects, ...advanced.effects],
-      changed: true,
-    }, false);
+    return finalize(
+      state,
+      {
+        state: advanced.state,
+        effects: [...effects, ...advanced.effects],
+        changed: true,
+      },
+      false,
+    );
   }
 
   if (working.phase === 'LEVEL_COMPLETE') {
     const advanced = advanceFromLevelComplete(working, now, deps);
-    return finalize(state, {
-      state: advanced.state,
-      effects: [...effects, ...advanced.effects],
-      changed: true,
-    }, false);
+    return finalize(
+      state,
+      {
+        state: advanced.state,
+        effects: [...effects, ...advanced.effects],
+        changed: true,
+      },
+      false,
+    );
   }
 
-  return changed ? finalize(state, { state: working, effects, changed }, false) : { state, effects };
+  return changed
+    ? finalize(state, { state: working, effects, changed }, false)
+    : { state, effects };
 }
 
 export { createGameState, toPublicState };

@@ -1,4 +1,10 @@
-import type { Difficulty, GameMode, PublicPlayer, PublicRoomState, RoomPhase } from '../../shared/types';
+import type {
+  Difficulty,
+  GameMode,
+  PublicPlayer,
+  PublicRoomState,
+  RoomPhase,
+} from '../../shared/types';
 import type { PlayerIdentity } from './events';
 import {
   DIFFICULTY_TIMERS,
@@ -217,8 +223,7 @@ export function phaseDurationMs(state: GameState, phase: RoomPhase): number | nu
 
 export function isFinalQuestion(state: GameState): boolean {
   return (
-    state.level >= state.totalLevels &&
-    state.questionsResolvedThisLevel >= state.questionsPerLevel
+    state.level >= state.totalLevels && state.questionsResolvedThisLevel >= state.questionsPerLevel
   );
 }
 
@@ -263,8 +268,7 @@ export function toPublicState(state: GameState, serverNow: number): PublicRoomSt
 
   const questionVisible =
     state.question !== null &&
-    (state.phase === 'QUESTION' ||
-      (state.phase === 'PAUSED' && state.pausedFrom === 'QUESTION'));
+    (state.phase === 'QUESTION' || (state.phase === 'PAUSED' && state.pausedFrom === 'QUESTION'));
   const revealVisible =
     state.lastReveal !== null &&
     (phaseShowsReveal(state.phase) ||
@@ -301,10 +305,14 @@ export function toPublicState(state: GameState, serverNow: number): PublicRoomSt
     players,
     question: questionVisible && state.question ? publicQuestion(state.question) : null,
     reveal: revealVisible && state.lastReveal ? { ...state.lastReveal } : null,
-    results: revealVisible && state.lastResults ? state.lastResults.map((result) => ({ ...result })) : null,
-    finalRanking: state.phase === 'MATCH_OVER' && state.finalRanking
-      ? state.finalRanking.map((entry) => ({ ...entry }))
-      : null,
+    results:
+      revealVisible && state.lastResults
+        ? state.lastResults.map((result) => ({ ...result }))
+        : null,
+    finalRanking:
+      state.phase === 'MATCH_OVER' && state.finalRanking
+        ? state.finalRanking.map((entry) => ({ ...entry }))
+        : null,
     winnerId: state.phase === 'MATCH_OVER' ? state.winnerId : null,
   };
 }

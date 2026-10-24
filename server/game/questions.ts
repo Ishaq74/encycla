@@ -38,9 +38,8 @@ export function selectQuestion(
   usedQuestionIds: readonly string[],
   random: () => number,
 ): QuestionSelection | null {
-  const eligible = category === null
-    ? questions
-    : questions.filter((question) => question.category === category);
+  const eligible =
+    category === null ? questions : questions.filter((question) => question.category === category);
 
   if (eligible.length === 0) {
     return null;
