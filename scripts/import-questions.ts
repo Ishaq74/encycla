@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
+import { migrate } from '../server/db/migrate';
 import { loadConfig } from '../server/config';
 import { computeContentHash, loadQuestionBank } from '../shared/question-bank';
 import type { QuestionRecord } from '../shared/schemas';
@@ -144,6 +145,7 @@ async function main(): Promise<void> {
   const db = new Database(config.databasePath);
   try {
     db.pragma('journal_mode = WAL');
+    migrate(db);
     const result = syncQuestions(db, bank.questions);
     console.log(`Imported ${result.total} questions into ${config.databasePath}`);
     for (const [category, count] of Object.entries(result.counts)) {
